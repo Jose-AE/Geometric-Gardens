@@ -18,16 +18,30 @@ MonoBehaviour:
     <Size>k__BackingField: {x: 1, y: 1}
     <Prefab>k__BackingField: {fileID: 8308251930171362805, guid: cfc24e0e7c37d7941bb0bc2d99e80221,
       type: 3}
-    <Type>k__BackingField: 0
+    <Type>k__BackingField: 1
+    <FreeformPlace>k__BackingField: 0
+    <Symmetric>k__BackingField: 0
   - <Name>k__BackingField: Cylinder
     <id>k__BackingField: 1
     <Size>k__BackingField: {x: 1, y: 1}
     <Prefab>k__BackingField: {fileID: 8448756170959033281, guid: 61355f5b5a2c2b24a85d6dc214531fab,
       type: 3}
     <Type>k__BackingField: 1
+    <FreeformPlace>k__BackingField: 0
+    <Symmetric>k__BackingField: 0
   - <Name>k__BackingField: Square
     <id>k__BackingField: 2
     <Size>k__BackingField: {x: 1, y: 1}
     <Prefab>k__BackingField: {fileID: 2330484399784450698, guid: 78b9aedb2ef03ef419580f29bba3cc69,
       type: 3}
     <Type>k__BackingField: 0
+    <FreeformPlace>k__BackingField: 1
+    <Symmetric>k__BackingField: 1
+  - <Name>k__BackingField: Rect
+    <id>k__BackingField: 3
+    <Size>k__BackingField: {x: 1, y: 1}
+    <Prefab>k__BackingField: {fileID: 2330484399784450698, guid: 78b9aedb2ef03ef419580f29bba3cc69,
+      type: 3}
+    <Type>k__BackingField: 0
+    <FreeformPlace>k__BackingField: 1
+    <Symmetric>k__BackingField: 0

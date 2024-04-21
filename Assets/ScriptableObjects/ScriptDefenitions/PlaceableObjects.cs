@@ -33,8 +33,14 @@ public class ObjectData
     [field: SerializeField]
     public GameObject Prefab { get; private set; }
 
+
     [field: SerializeField]
     public PlaceableType Type { get; private set; }
 
 
+    [field: SerializeField]
+    public bool FreeformPlace { get; private set; }
+
+    [field: SerializeField]
+    public bool Symmetric { get; private set; }
 }
