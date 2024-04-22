@@ -29,7 +29,7 @@ public class ObjectData
     [field: SerializeField]
     public int id { get; private set; }
     [field: SerializeField]
-    public Vector2Int Size { get; private set; } = Vector2Int.one;
+    public Vector2Int Size { get; private set; } = Vector2Int.one; //if (0,0) = freesize, (-1,-1) free size symmetric
     [field: SerializeField]
     public GameObject Prefab { get; private set; }
 
@@ -38,9 +38,4 @@ public class ObjectData
     public PlaceableType Type { get; private set; }
 
 
-    [field: SerializeField]
-    public bool FreeformPlace { get; private set; }
-
-    [field: SerializeField]
-    public bool Symmetric { get; private set; }
 }

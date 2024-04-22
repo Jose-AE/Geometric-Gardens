@@ -141,7 +141,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!135 &109749995
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1978,6 +1978,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1010d521a304dee4c82513989985acca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  debugCells: 0
+  debugCellPrefab: {fileID: 3742931091609104606, guid: 00a63744cd290c14b9260943baab06d1,
+    type: 3}
   placementLayerMask:
     serializedVersion: 2
     m_Bits: 8
@@ -2411,7 +2414,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

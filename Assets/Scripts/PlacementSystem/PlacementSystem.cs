@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 
@@ -6,12 +8,18 @@ using UnityEngine;
 
 public class PlacementSystem : MonoBehaviour
 {
-    private Vector3Int selectedCellPosition;
-    private ObjectData objectToPlace;
-    private Vector3Int objectStartPosition;
+    private Vector3Int currentCellPosAtCursor;
+
+    private Vector3Int cellPosAtCursorClick;
+
+
+    private ObjectData objectToPlaceData;
 
 
 
+
+    [SerializeField] private bool debugCells;
+    [SerializeField] private GameObject debugCellPrefab;
 
 
     [SerializeField] private LayerMask placementLayerMask;
@@ -39,9 +47,32 @@ public class PlacementSystem : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if (debugCells) DegubCellPos();
+
+
+
+
         StopPlacement();
         StartPlacement(0);
 
+    }
+
+    private void DegubCellPos()
+    {
+
+        Vector3Int startPos = new Vector3Int(5, 0, 5);
+        Vector3Int endPos = new Vector3Int(-5, 0, -5);
+
+
+        List<Vector3Int> list = plotGridData.CalculatePositions(startPos, endPos);
+        foreach (Vector3Int pos in list)
+        {
+            GameObject obj = Instantiate(debugCellPrefab);
+            obj.transform.position = pos;
+            obj.GetComponentInChildren<TMP_Text>().text = $"({pos.x},{pos.z})";
+        }
+
+        Debug.Log(GridData.CalculateBoxPosAndScale(startPos, endPos));
     }
 
     // Update is called once per frame
@@ -53,67 +84,47 @@ public class PlacementSystem : MonoBehaviour
     }
 
 
-
-    // Calculate the size of the selection rectangle based on two grid positions
-    Vector2Int CalculateSelectionSize(Vector3Int v1, Vector3Int v2, bool symmetric = true)
-    {
-        Vector2Int startPos = new Vector2Int(v1.x, v1.z);
-        Vector2Int endPos = new Vector2Int(v2.x, v2.z);
-
-
-        Vector2Int selectionSize = endPos - startPos;
-
-        // When calculating selection size, we need to ensure that it includes the cursor's position. 
-        // Therefore, if the selection size in either dimension is positive, we increment it by one.
-        if (selectionSize.x > 0)
-            selectionSize.x++;
-        if (selectionSize.y > 0)
-            selectionSize.y++;
-
-        //If size is 0 make it 1 to be able to have 1x1 
-        if (selectionSize.x == 0)
-            selectionSize.x++;
-        if (selectionSize.y == 0)
-            selectionSize.y++;
-
-        // If symmetric is true, enforce square selection
-        if (symmetric)
-        {
-            //get x and y symbols (-, +)
-            int symbolX = selectionSize.x < 0 ? -1 : 1;
-            int symbolY = selectionSize.y < 0 ? -1 : 1;
-
-            int maxSize = Math.Abs(Mathf.Max(selectionSize.x, selectionSize.y));
-            selectionSize = new Vector2Int(maxSize * symbolX, maxSize * symbolY);
-        }
-
-
-        return selectionSize;
-    }
-
-
     void UpdateCellCursor()
     {
-        if (objectToPlace == null) return;
+        if (objectToPlaceData == null) return;
 
 
-        //If its dragable 
-        if (InputManager.IsPressingPlaceInput() && objectToPlace.FreeformPlace)
+        Vector3Int pos;
+        Vector3Int scale;
+        Color color = Color.gray;
+
+        if (InputManager.IsPressingPlaceInput() && objectToPlaceData.Size.x <= 0 && objectToPlaceData.Size.y <= 0)
         {
-            Vector2Int selectionSize = CalculateSelectionSize(objectStartPosition, selectedCellPosition, objectToPlace.Symmetric);
+            if (objectToPlaceData.Size.magnitude == 0)
+            {
+                (pos, scale) = GridData.CalculateBoxPosAndScale(cellPosAtCursorClick, currentCellPosAtCursor);
+                color = IsPlacementValid(cellPosAtCursorClick, currentCellPosAtCursor) ? Color.green : Color.red;
+            }
+            else
+            {
+                (pos, scale) = GridData.CalculateBoxPosAndScale(cellPosAtCursorClick, currentCellPosAtCursor, true);
+                color = IsPlacementValid(cellPosAtCursorClick, cellPosAtCursorClick + (scale - Vector3Int.one)) ? Color.green : Color.red;
+            }
 
-            cellCursor.transform.localScale = new Vector3Int(selectionSize.x, 1, selectionSize.y);
-            cellCursor.transform.position = objectStartPosition;
-            //Debug.Log($"Size: {selectionSize}  cursor START: {startPos}  cursor end: {endPos}");
+            cellCursor.transform.localScale = scale;
+            cellCursor.transform.position = pos;
         }
         else
         {
-            cellCursor.transform.localScale = Vector3.one;
-            cellCursor.transform.position = selectedCellPosition;
+            Vector3Int endPos = currentCellPosAtCursor;
+
+            if (objectToPlaceData.Size.x > 0 && objectToPlaceData.Size.y > 0)
+                endPos += new Vector3Int(objectToPlaceData.Size.x - 1, 0, objectToPlaceData.Size.y - 1);
+
+            (pos, scale) = GridData.CalculateBoxPosAndScale(currentCellPosAtCursor, endPos);
+
+            cellCursor.transform.localScale = scale;
+            cellCursor.transform.position = pos;
+
+            color = IsPlacementValid(currentCellPosAtCursor, endPos) ? Color.green : Color.red;
         }
+        cellCursor.transform.position += new Vector3(0, 0.01f, 0);//make the cursor not clip with floor
 
-
-        Color color = IsPlacementValid() ? Color.green : Color.red;
         cellCursor.GetComponentInChildren<Renderer>().material.SetColor("_Color", color);
     }
 
@@ -128,65 +139,78 @@ public class PlacementSystem : MonoBehaviour
             Debug.LogError($"Failed to start placement for object with ID {id} ");
             return;
         }
-        objectToPlace = placeableObjects.objects[objectToPlaceIndex];
+        objectToPlaceData = placeableObjects.objects[objectToPlaceIndex];
 
         gridVisualisation.SetActive(true);
         cellCursor.SetActive(true);
 
         InputManager.OnEndPlaceInput += PlaceObject;
-        InputManager.OnStartPlaceInput += SaveStartPos;
+        InputManager.OnStartPlaceInput += SaveCellPosAtCursor;
         InputManager.OnExitPlacementModeInput += StopPlacement;
     }
 
-    private bool IsPlacementValid()
+    private bool IsPlacementValid(Vector3Int startPos, Vector3Int endPos)
     {
-        return true;
-
+        GridData grid = GetGridOfObjectToPlace();
+        return grid.CanAddObjectAt(startPos, endPos);
     }
 
     private void PlaceObject()
     {
         if (InputManager.IsCursorOverUI) return;
-        if (objectToPlace == null) return;
-        if (!IsPlacementValid())
-            return;
-
+        if (objectToPlaceData == null) return;
 
         GridData selectedGrid = GetGridOfObjectToPlace();
 
 
 
-
-
-        if (objectToPlace.FreeformPlace)
+        if (objectToPlaceData.Size.x <= 0 && objectToPlaceData.Size.y <= 0)
         {
-            GameObject obj = Instantiate(objectToPlace.Prefab, objectStartPosition, Quaternion.identity);
-            Vector2Int objectSize = CalculateSelectionSize(objectStartPosition, selectedCellPosition, objectToPlace.Symmetric);
-            obj.transform.localScale = new Vector3(objectSize.x, 1, objectSize.y);
 
-            ////fix here 
-            Vector3Int endPos = new Vector3Int(objectSize.x - 1, 0, objectSize.y - 1);
+            Vector3Int pos;
+            Vector3Int scale;
 
-            selectedGrid.AddObjectAt(objectStartPosition, endPos, objectToPlace.id);
+            if (objectToPlaceData.Size.magnitude == 0)
+            {
+                if (!IsPlacementValid(cellPosAtCursorClick, currentCellPosAtCursor))
+                    return;
+                (pos, scale) = GridData.CalculateBoxPosAndScale(cellPosAtCursorClick, currentCellPosAtCursor);
+                selectedGrid.AddObjectAt(cellPosAtCursorClick, currentCellPosAtCursor, objectToPlaceData.id);
+            }
+            else
+            {
+                (pos, scale) = GridData.CalculateBoxPosAndScale(cellPosAtCursorClick, currentCellPosAtCursor, true);
+
+                if (!IsPlacementValid(cellPosAtCursorClick, cellPosAtCursorClick + (scale - Vector3Int.one)))
+                    return;
+
+                selectedGrid.AddObjectAt(cellPosAtCursorClick, cellPosAtCursorClick + (scale - Vector3Int.one), objectToPlaceData.id);
+            }
+
+            GameObject obj = Instantiate(objectToPlaceData.Prefab, pos, Quaternion.identity);
+            obj.transform.localScale = scale;
         }
         else
         {
-            GameObject obj = Instantiate(objectToPlace.Prefab, selectedCellPosition, Quaternion.identity);
-            selectedGrid.AddObjectAt(selectedCellPosition, new Vector3Int(objectToPlace.Size.x - 1, 0, objectToPlace.Size.y - 1), objectToPlace.id);
+            if (!IsPlacementValid(currentCellPosAtCursor, currentCellPosAtCursor))
+                return;
+
+            Instantiate(objectToPlaceData.Prefab, currentCellPosAtCursor, Quaternion.identity);
+            selectedGrid.AddObjectAt(currentCellPosAtCursor, currentCellPosAtCursor + new Vector3Int(objectToPlaceData.Size.x - 1, 0, objectToPlaceData.Size.y - 1), objectToPlaceData.id);
         }
 
         StopPlacement();
     }
 
-    void SaveStartPos()
+    void SaveCellPosAtCursor()
     {
-        objectStartPosition = selectedCellPosition;
+        cellPosAtCursorClick = currentCellPosAtCursor;
     }
 
 
     GridData GetGridOfObjectToPlace()
     {
-        switch (objectToPlace.Type)
+        switch (objectToPlaceData.Type)
         {
             case PlaceableType.PLOT:
                 return plotGridData;
@@ -194,18 +218,18 @@ public class PlacementSystem : MonoBehaviour
             case PlaceableType.PLANT:
                 return plantGridData;
             default:
-                throw new Exception($"No grid found for type {objectToPlace.Type}");
+                throw new Exception($"No grid found for type {objectToPlaceData.Type}");
         }
     }
 
     void StopPlacement()
     {
-        objectToPlace = null;
+        objectToPlaceData = null;
         gridVisualisation.SetActive(false);
         cellCursor.SetActive(false);
         InputManager.OnEndPlaceInput -= PlaceObject;
         InputManager.OnExitPlacementModeInput -= StopPlacement;
-        InputManager.OnStartPlaceInput -= SaveStartPos;
+        InputManager.OnStartPlaceInput -= SaveCellPosAtCursor;
     }
 
 
@@ -221,11 +245,7 @@ public class PlacementSystem : MonoBehaviour
         {
             //Debug.Log("Hit Pos: " + hit.point);
             //Debug.Log("Grid Pos: " + grid.WorldToCell(hit.point));
-            selectedCellPosition = grid.WorldToCell(hit.point);
+            currentCellPosAtCursor = grid.WorldToCell(hit.point);
         }
     }
-
-
-
-
 }
